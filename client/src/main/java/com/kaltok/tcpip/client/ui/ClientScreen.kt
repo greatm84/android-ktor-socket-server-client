@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -18,6 +19,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -35,6 +37,11 @@ import com.kaltok.tcpip.client.ui.viewmodel.ClientViewModel
 fun ClientScreen(viewModel: ClientViewModel = viewModel()) {
     val uiState by viewModel.uiState.collectAsState()
     var inputMessage by remember { mutableStateOf("") }
+    val listState = rememberLazyListState()
+    LaunchedEffect(uiState.logList.size) {
+        listState.animateScrollToItem(uiState.logList.size)
+    }
+
 
     MaterialTheme {
         Column(Modifier.fillMaxSize()) {
@@ -81,7 +88,7 @@ fun ClientScreen(viewModel: ClientViewModel = viewModel()) {
 
             Spacer(modifier = Modifier.padding(10.dp))
             Text(text = "Logs")
-            LazyColumn {
+            LazyColumn(state = listState) {
                 items(uiState.logList) {
                     LogItem(it.first, it.second, it.third)
                 }

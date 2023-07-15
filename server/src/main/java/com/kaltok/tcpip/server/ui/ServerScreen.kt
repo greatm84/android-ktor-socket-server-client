@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
@@ -36,10 +37,15 @@ import com.kaltok.tcpip.server.ui.viewmodel.ServerViewModel
 fun MainScreen(viewModel: ServerViewModel = viewModel()) {
     val context = LocalContext.current
     val uiState by viewModel.uiState.collectAsState()
+    val listState = rememberLazyListState()
     var inputMessage by remember { mutableStateOf("") }
 
     LaunchedEffect(Unit) {
         viewModel.refreshServerIpAddress(context)
+    }
+
+    LaunchedEffect(uiState.logList.size) {
+        listState.animateScrollToItem(uiState.logList.size)
     }
 
     MaterialTheme {
@@ -85,7 +91,7 @@ fun MainScreen(viewModel: ServerViewModel = viewModel()) {
 
             Spacer(modifier = Modifier.padding(10.dp))
             Text(text = "Logs")
-            LazyColumn {
+            LazyColumn(state = listState) {
                 items(uiState.logList) {
                     LogItem(it.first, it.second, it.third)
                 }

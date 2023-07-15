@@ -97,7 +97,7 @@ class ClientViewModel : ViewModel() {
                         install(WebSockets)
                     }
                     val targetIp =
-                        if (_uiState.value.useLocalIp) "127.0.0.1" else _uiState.value.serverIp
+                        if (_uiState.value.useLocalIp) "localhost" else _uiState.value.serverIp
                     Log.i(tag, "try connect $clientId $targetIp")
 
                     try {
