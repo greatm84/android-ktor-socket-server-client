@@ -81,6 +81,14 @@ fun ClientScreen(viewModel: ClientViewModel = viewModel()) {
                     }
                 )
             }
+
+            Text(text = "Logs")
+            LazyColumn(state = listState, modifier = Modifier.weight(1f)) {
+                items(uiState.logList) {
+                    LogItem(it.first, it.second, it.third)
+                }
+            }
+
             Spacer(modifier = Modifier.padding(10.dp))
 
             Row(Modifier.fillMaxWidth()) {
@@ -96,12 +104,6 @@ fun ClientScreen(viewModel: ClientViewModel = viewModel()) {
             }
 
             Spacer(modifier = Modifier.padding(10.dp))
-            Text(text = "Logs")
-            LazyColumn(state = listState) {
-                items(uiState.logList) {
-                    LogItem(it.first, it.second, it.third)
-                }
-            }
         }
     }
 }

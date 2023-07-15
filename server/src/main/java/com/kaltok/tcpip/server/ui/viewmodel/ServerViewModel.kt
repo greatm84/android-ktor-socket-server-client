@@ -191,6 +191,7 @@ class ServerViewModel : ViewModel() {
                                     thisConnection.session.close()
                                 }
                                 connections -= thisConnection
+                                sendMessageToClient("exits ${thisConnection.name}")
                             }
                         }
                     }
