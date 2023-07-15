@@ -33,10 +33,6 @@ class ServerRepository private constructor() {
         _sendMessagePool.emit(Frame.Close())
     }
 
-    suspend fun initSendMessagePool() {
-//        _sendMessagePool.emit(null)
-    }
-
     fun setServerStatus(status: ServerStatus) {
         _serverStatus.value = status
         appendLogItem("serverStatus :$status")

@@ -4,14 +4,12 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
 import android.os.IBinder
-import android.util.Log
 import androidx.browser.customtabs.CustomTabsService
 import androidx.browser.customtabs.CustomTabsSessionToken
+import timber.log.Timber
 
 class ServerCustomTab : CustomTabsService() {
     private var bindIntent: Intent? = null
-
-    private val tag = "KSH_TEST"
 
     override fun onCreate() {
         // Kick off the first access to avoid random StrictMode violations in clients.
@@ -20,7 +18,7 @@ class ServerCustomTab : CustomTabsService() {
 
     override fun onBind(intent: Intent?): IBinder {
         bindIntent = intent
-        Log.i(tag, "intent ${intent?.toUri(Intent.URI_ALLOW_UNSAFE)}")
+        Timber.i("intent " + intent?.toUri(Intent.URI_ALLOW_UNSAFE))
         return super.onBind(intent)
     }
 

@@ -4,39 +4,22 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
 import android.provider.Settings
-import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.viewModels
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.material3.Button
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextField
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
-import androidx.core.net.toUri
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
-import androidx.lifecycle.viewmodel.compose.viewModel
-import com.kaltok.tcpip.server.model.ServerStatus
 import com.kaltok.tcpip.server.ui.MainScreen
 import com.kaltok.tcpip.server.ui.theme.ServerTheme
 import com.kaltok.tcpip.server.ui.viewmodel.ServerViewModel
 import kotlinx.coroutines.launch
+import timber.log.Timber
 
 class MainActivity : ComponentActivity() {
-
-    companion object {
-        private const val tag = "KSH_TEST"
-    }
 
     private val viewModel: ServerViewModel by viewModels { ViewModelProvider.AndroidViewModelFactory() }
 
@@ -119,14 +102,14 @@ class MainActivity : ComponentActivity() {
     override fun onNewIntent(intent: Intent?) {
         super.onNewIntent(intent)
 
-        Log.i(tag, "new intent to server $intent")
+        Timber.i("new intent to server $intent")
         handleDeepLink(intent)
     }
 
 
     private fun Intent.isLaunchFromHistory(): Boolean {
         return (this.flags and Intent.FLAG_ACTIVITY_LAUNCHED_FROM_HISTORY == Intent.FLAG_ACTIVITY_LAUNCHED_FROM_HISTORY).also {
-            Log.d(tag, "isLaunchFromHistory: $it")
+            Timber.d("isLaunchFromHistory: $it")
         }
     }
 
@@ -166,7 +149,7 @@ class MainActivity : ComponentActivity() {
         if (intent.action.equals(Intent.ACTION_VIEW) && intent.data != null) {
 
             val url = intent.data.toString()
-            Log.i(tag, "try forwarding url: $url")
+            Timber.i("try forwarding url: $url")
             viewModel.sendMessageToClient(url)
         }
     }

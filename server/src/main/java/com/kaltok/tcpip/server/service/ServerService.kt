@@ -5,6 +5,7 @@ import android.content.Intent
 import android.os.IBinder
 import android.util.Log
 import com.kaltok.tcpip.common.constant.Define
+import com.kaltok.tcpip.common.constant.Define.ID_LEN
 import com.kaltok.tcpip.server.model.Connection
 import com.kaltok.tcpip.server.model.ServerStatus
 import com.kaltok.tcpip.server.repository.ServerRepository
@@ -32,12 +33,6 @@ import java.time.Duration
 import java.util.Collections
 
 class ServerService : Service() {
-
-    companion object {
-        private const val TAG = "KSH_TEST:Server"
-        private const val ID_LEN = 5
-    }
-
 
     private var server: ApplicationEngine? = null
     private val repository = ServerRepository.getInstance()
@@ -96,13 +91,13 @@ class ServerService : Service() {
                 }
 
                 webSocket("/chat") {
-                    Log.i(TAG, "server client added")
+                    Timber.i("server client added")
                     repository.appendLogItem("server client added")
                     val thisConnection = Connection(this)
                     connections += thisConnection
 
                     try {
-                        Log.i(TAG, "server send welcome")
+                        Timber.i("server send welcome")
                         val welcomeMessage =
                             "You are connected! id is ${thisConnection.name} There are ${connections.count()} users here."
                         send(welcomeMessage)
@@ -115,17 +110,14 @@ class ServerService : Service() {
                                 is Frame.Text -> {
                                     val receivedText = frame.readText()
 
-                                    Log.i(TAG, "server received $receivedText")
+                                    Timber.i("server received $receivedText")
                                     repository.appendLogItem("server received :$receivedText")
 
                                     if (receivedText.length > ID_LEN && receivedText[ID_LEN] == ':') {
                                         val id = receivedText.substring(0, ID_LEN)
                                         val remain =
                                             receivedText.substring(ID_LEN + 1)
-                                        Log.i(
-                                            TAG,
-                                            "server receive client message : $remain"
-                                        )
+                                        Timber.i("server receive client message : $remain")
                                         repository.appendLogItem(remain, id)
                                         repository.sendOutputData(remain)
                                     }
@@ -144,9 +136,9 @@ class ServerService : Service() {
                             }
                         }
                     } catch (e: Exception) {
-                        e.localizedMessage?.let { Log.i(TAG, it) }
+                        e.localizedMessage?.let { Timber.i(it) }
                     } finally {
-                        Log.i(TAG, "Removing ${thisConnection.name}!")
+                        Timber.i("Removing " + thisConnection.name + "!")
                         repository.appendLogItem("Removing ${thisConnection.name}!")
                         if (thisConnection.session.isActive) {
                             thisConnection.session.close()
