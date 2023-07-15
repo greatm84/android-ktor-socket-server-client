@@ -4,6 +4,7 @@ import android.content.Context
 import android.net.wifi.WifiManager
 import android.text.format.Formatter
 import android.util.Log
+import androidx.compose.ui.graphics.Color
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.kaltok.tcpip.server.model.Connection
@@ -76,15 +77,26 @@ class ServerViewModel : ViewModel() {
         _uiState.value = _uiState.value.copy(serverPort = value)
     }
 
+    fun setServerStatus(serverStatus: ServerStatus) {
+        _uiState.value = _uiState.value.copy(serverStatus = serverStatus)
+        appendLogItem("server status :$serverStatus")
+    }
+
+    fun appendLogItem(content: String, id: String = "server", color: Color = Color.Black) {
+        _uiState.value =
+            _uiState.value.copy(logList = _uiState.value.logList.toMutableList().apply {
+                add(Triple(id, content, if (id != "server") Color.Blue else color))
+            })
+    }
+
     fun toggleServer() {
         when (_uiState.value.serverStatus) {
             ServerStatus.IDLE -> {
                 initSendMessagePool()
-                _uiState.value = _uiState.value.copy(serverStatus = ServerStatus.CREATING)
+                setServerStatus(serverStatus = ServerStatus.CREATING)
 
                 val port = _uiState.value.serverPort.toIntOrNull() ?: 7008
-
-                _uiState.value = _uiState.value.copy(serverPort = port.toString())
+                setServerPort(port.toString())
 
                 val engine = embeddedServer(Netty, port) {
                     install(WebSockets) {
@@ -105,10 +117,13 @@ class ServerViewModel : ViewModel() {
                                 Log.i(TAG, "server send $frame")
 
                                 if (frame is Frame.Text) {
+                                    val sendText = frame.readText()
+                                    appendLogItem(sendText)
                                     connections.forEach {
-                                        it.session.send("00000:${frame.readText()}")
+                                        it.session.send("00000:${sendText}")
                                     }
                                 } else {
+                                    appendLogItem(frame.toString())
                                     connections.forEach {
                                         it.session.send(frame)
                                     }
@@ -118,12 +133,16 @@ class ServerViewModel : ViewModel() {
 
                         webSocket("/chat") {
                             Log.i("KSH_TEST", "server client added")
+                            appendLogItem("server client added")
                             val thisConnection = Connection(this)
                             connections += thisConnection
 
                             try {
                                 Log.i(TAG, "server send welcome")
-                                send("You are connected! id is ${thisConnection.name} There are ${connections.count()} users here.")
+                                val welcomeMessage =
+                                    "You are connected! id is ${thisConnection.name} There are ${connections.count()} users here."
+                                send(welcomeMessage)
+                                appendLogItem("server send $welcomeMessage")
 
                                 while (uiState.value.serverStatus == ServerStatus.CREATED &&
                                     thisConnection.session.isActive
@@ -133,13 +152,16 @@ class ServerViewModel : ViewModel() {
                                             val receivedText = frame.readText()
 
                                             Log.i(TAG, "server received $receivedText")
+                                            appendLogItem("server received :$receivedText")
 
                                             if (receivedText.length > ID_LEN && receivedText[ID_LEN] == ':') {
+                                                val id = receivedText.substring(0, ID_LEN)
                                                 val remain = receivedText.substring(ID_LEN + 1)
                                                 Log.i(
                                                     TAG,
                                                     "server receive client message : $remain"
                                                 )
+                                                appendLogItem(remain, id)
                                                 _outputData.emit(remain)
                                             }
 
@@ -149,6 +171,7 @@ class ServerViewModel : ViewModel() {
                                         }
 
                                         is Frame.Close -> {
+                                            appendLogItem("server received close from:${thisConnection.name}")
                                             throw Exception("close received")
                                         }
 
@@ -163,6 +186,7 @@ class ServerViewModel : ViewModel() {
                                 e.localizedMessage?.let { Log.i("KSH_TEST", it) }
                             } finally {
                                 Log.i(TAG, "Removing ${thisConnection.name}!")
+                                appendLogItem("Removing ${thisConnection.name}!")
                                 if (thisConnection.session.isActive) {
                                     thisConnection.session.close()
                                 }
@@ -172,18 +196,17 @@ class ServerViewModel : ViewModel() {
                     }
                 }.start(wait = false)
 
-                _uiState.value =
-                    _uiState.value.copy(serverStatus = ServerStatus.CREATED)
+                setServerStatus(serverStatus = ServerStatus.CREATED)
 
                 _engine = engine
             }
 
             ServerStatus.CREATED -> {
                 viewModelScope.launch {
-                    _uiState.value = _uiState.value.copy(serverStatus = ServerStatus.STOPPING)
+                    setServerStatus(serverStatus = ServerStatus.STOPPING)
                     sendCloseEventToClient()
                     _engine?.stop()
-                    _uiState.value = _uiState.value.copy(serverStatus = ServerStatus.IDLE)
+                    setServerStatus(serverStatus = ServerStatus.IDLE)
                 }
             }
 
@@ -194,6 +217,6 @@ class ServerViewModel : ViewModel() {
     fun refreshServerIpAddress(context: Context) {
         val wm = context.getSystemService(Context.WIFI_SERVICE) as WifiManager
         val ip: String = Formatter.formatIpAddress(wm.connectionInfo.ipAddress)
-        _uiState.value = _uiState.value.copy(serverIp = ip)
+        setServerIp(ip)
     }
 }

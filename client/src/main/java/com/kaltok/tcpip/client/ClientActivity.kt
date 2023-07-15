@@ -8,27 +8,13 @@ import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.viewModels
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.material3.Button
-import androidx.compose.material3.Checkbox
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextField
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.core.net.toUri
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
-import androidx.lifecycle.viewmodel.compose.viewModel
 import com.kaltok.tcpip.client.ui.ClientScreen
 import com.kaltok.tcpip.client.ui.theme.ServerTheme
 import com.kaltok.tcpip.client.ui.viewmodel.ClientViewModel
@@ -60,17 +46,18 @@ class ClientActivity : ComponentActivity() {
 
         lifecycleScope.launch {
             viewModel.outputData.collect {
-                if (it.isNotEmpty()) {
-                    if (it.startsWith("http")) { // goto webview
-                        Log.i(tag, "cilent forward to webview $it")
-                        launchWebView(it)
-                    } else {
-                        Log.i(tag, "client output collect send intent $it")
-                        val intent = Intent.parseUri(it, Intent.URI_INTENT_SCHEME)
-                        val uri = Uri.parse(intent.dataString)
-                        startActivity(Intent(Intent.ACTION_VIEW, uri))
-                    }
-                }
+                // TODO you can control received
+//                if (it.isNotEmpty()) {
+//                    if (it.startsWith("http")) { // goto webview
+//                        Log.i(tag, "cilent forward to webview $it")
+//                        launchWebView(it)
+//                    } else {
+//                        Log.i(tag, "client output collect send intent $it")
+//                        val intent = Intent.parseUri(it, Intent.URI_INTENT_SCHEME)
+//                        val uri = Uri.parse(intent.dataString)
+//                        startActivity(Intent(Intent.ACTION_VIEW, uri))
+//                    }
+//                }
             }
         }
 

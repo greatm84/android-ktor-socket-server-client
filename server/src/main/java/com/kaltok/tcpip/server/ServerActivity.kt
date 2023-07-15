@@ -27,6 +27,7 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.kaltok.tcpip.server.model.ServerStatus
+import com.kaltok.tcpip.server.ui.MainScreen
 import com.kaltok.tcpip.server.ui.theme.ServerTheme
 import com.kaltok.tcpip.server.ui.viewmodel.ServerViewModel
 import kotlinx.coroutines.launch
@@ -48,7 +49,7 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    MainScreen(viewModel)
+                    MainScreen()
                 }
             }
         }
@@ -56,41 +57,43 @@ class MainActivity : ComponentActivity() {
         lifecycleScope.launch {
             viewModel.outputData.collect {
                 if (it.isNotEmpty()) {
-                    when {
-                        it.startsWith("http") -> {
-                            Log.i(tag, "server forward to webview $it")
-                            val webViewPackageName =
-                                "com.samsung.android.game.cloudgame.service.webview"
-                            val launchIntent =
-                                packageManager.getLaunchIntentForPackage(webViewPackageName)
-                            if (launchIntent != null && canResolve(launchIntent)) {
-                                launchIntent.apply {
-                                    action = Intent.ACTION_VIEW
-                                    data = it.toUri()
-                                }
-                                startActivity(launchIntent)
-                            } else {
-                                Log.i(tag, "can not resolve $it")
-                            }
-                        }
+                    // TODO you can control received
 
-                        else -> {
-                            val intent = Intent.parseUri(it, Intent.URI_ALLOW_UNSAFE)
-                            when {
-                                isFromMarketIntent(intent) -> {
-                                    intent.data?.getQueryParameter("id")?.let { packageName ->
-                                        jumpToGalaxyStorePage(packageName)
-                                    } ?: run {
-                                        startActivity(intent)
-                                    }
-                                }
-
-                                canResolve(intent) -> {
-                                    startActivity(intent)
-                                }
-                            }
-                        }
-                    }
+//                    when {
+//                        it.startsWith("http") -> {
+//                            Log.i(tag, "server forward to webview $it")
+//                            val webViewPackageName =
+//                                "com.samsung.android.game.cloudgame.service.webview"
+//                            val launchIntent =
+//                                packageManager.getLaunchIntentForPackage(webViewPackageName)
+//                            if (launchIntent != null && canResolve(launchIntent)) {
+//                                launchIntent.apply {
+//                                    action = Intent.ACTION_VIEW
+//                                    data = it.toUri()
+//                                }
+//                                startActivity(launchIntent)
+//                            } else {
+//                                Log.i(tag, "can not resolve $it")
+//                            }
+//                        }
+//
+//                        else -> {
+//                            val intent = Intent.parseUri(it, Intent.URI_ALLOW_UNSAFE)
+//                            when {
+//                                isFromMarketIntent(intent) -> {
+//                                    intent.data?.getQueryParameter("id")?.let { packageName ->
+//                                        jumpToGalaxyStorePage(packageName)
+//                                    } ?: run {
+//                                        startActivity(intent)
+//                                    }
+//                                }
+//
+//                                canResolve(intent) -> {
+//                                    startActivity(intent)
+//                                }
+//                            }
+//                        }
+//                    }
                 }
             }
         }
@@ -165,47 +168,6 @@ class MainActivity : ComponentActivity() {
             val url = intent.data.toString()
             Log.i(tag, "try forwarding url: $url")
             viewModel.sendMessageToClient(url)
-        }
-    }
-}
-
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun MainScreen(viewModel: ServerViewModel = viewModel()) {
-    val context = LocalContext.current
-    val uiState by viewModel.uiState.collectAsState()
-
-    LaunchedEffect(Unit) {
-        viewModel.refreshServerIpAddress(context)
-    }
-
-    MaterialTheme {
-        Column(Modifier.fillMaxSize()) {
-            Text(text = "Server Ip")
-            TextField(
-                value = uiState.serverIp,
-                onValueChange = { viewModel.setServerIp(it) },
-                readOnly = true
-            )
-            Text(text = "Server Port")
-            TextField(value = uiState.serverPort, onValueChange = { viewModel.setServerPort(it) })
-            Button(
-                onClick = { viewModel.toggleServer() },
-                enabled = when (uiState.serverStatus) {
-                    ServerStatus.IDLE, ServerStatus.CREATED -> true
-                    else -> false
-                }
-            ) {
-                Text(
-                    text = when (uiState.serverStatus) {
-                        ServerStatus.IDLE -> "CREATE"
-                        ServerStatus.CREATING -> "WAIT"
-                        ServerStatus.CREATED -> "STOP"
-                        ServerStatus.STOPPING -> "STOPPING"
-                    }
-                )
-            }
         }
     }
 }
