@@ -1,6 +1,7 @@
 package com.kaltok.tcpip.client.ui.viewmodel
 
 import android.util.Log
+import androidx.compose.ui.graphics.Color
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.kaltok.tcpip.client.ConnectStatus
@@ -73,12 +74,23 @@ class ClientViewModel : ViewModel() {
         _uiState.value = _uiState.value.copy(useLocalIp = value)
     }
 
+    fun appendLogItem(id: String, content: String, color: Color = Color.Black) {
+        _uiState.value =
+            _uiState.value.copy(logList = _uiState.value.logList.toMutableList().apply {
+                add(Triple(id, content, if (id != clientId) Color.Blue else color))
+            })
+    }
+
+    fun setConnectStatus(status: ConnectStatus) {
+        _uiState.value = _uiState.value.copy(connectStatus = status)
+    }
+
 
     fun toggleClient() {
         when (_uiState.value.connectStatus) {
             ConnectStatus.IDLE -> {
                 initSendMessagePool()
-                _uiState.value = _uiState.value.copy(connectStatus = ConnectStatus.CONNECTING)
+                setConnectStatus(ConnectStatus.CONNECTING)
 
                 CoroutineScope(Dispatchers.IO).launch {
                     val client = HttpClient {
@@ -95,8 +107,7 @@ class ClientViewModel : ViewModel() {
                             port = _uiState.value.serverPort.toInt(),
                             path = "/chat"
                         ) {
-                            _uiState.value =
-                                _uiState.value.copy(connectStatus = ConnectStatus.CONNECTED)
+                            setConnectStatus(ConnectStatus.CONNECTED)
 
                             launch {
                                 _sendMessagePool.collect {
@@ -107,12 +118,19 @@ class ClientViewModel : ViewModel() {
                                     when (it) {
                                         null -> {}
                                         is Frame.Text -> {
+                                            val sendText = it.readText()
                                             try {
-                                                send("$clientId:${it.readText()}")
+                                                send("$clientId:${sendText}")
+                                                appendLogItem(clientId, sendText)
                                             } catch (e: Exception) {
                                                 Log.e(
                                                     tag,
                                                     "Error while sending: " + e.localizedMessage
+                                                )
+                                                appendLogItem(
+                                                    clientId,
+                                                    "Error while sending : $sendText",
+                                                    Color.Red
                                                 )
                                             }
                                         }
@@ -120,6 +138,7 @@ class ClientViewModel : ViewModel() {
                                         else -> {
                                             Log.i(tag, "client send $it")
                                             send(it)
+                                            appendLogItem(clientId, "send close")
                                         }
                                     }
                                 }
@@ -141,12 +160,16 @@ class ClientViewModel : ViewModel() {
                                                     tag,
                                                     "client remain outputMessage $remain"
                                                 )
+                                                appendLogItem(id, remain)
                                                 _outputData.emit(remain)
                                             }
+                                        } else {
+                                            appendLogItem("server", receivedMessage)
                                         }
                                     }
 
                                     is Frame.Close -> {
+                                        appendLogItem(clientId, "Server Closed Exception")
                                         throw ClosedReceiveChannelException("server closed")
                                     }
 
@@ -161,18 +184,17 @@ class ClientViewModel : ViewModel() {
                             _client?.close()
                             _client = null
                         }
-                        _uiState.value =
-                            _uiState.value.copy(connectStatus = ConnectStatus.IDLE)
+
+                        setConnectStatus(ConnectStatus.IDLE)
                     }
                 }
             }
 
             ConnectStatus.CONNECTED -> {
                 viewModelScope.launch {
-                    _uiState.value =
-                        _uiState.value.copy(connectStatus = ConnectStatus.DISCONNECTING)
+                    setConnectStatus(ConnectStatus.DISCONNECTING)
                     sendCloseEventToServer()
-                    _uiState.value = _uiState.value.copy(connectStatus = ConnectStatus.IDLE)
+                    setConnectStatus(ConnectStatus.IDLE)
                 }
             }
 

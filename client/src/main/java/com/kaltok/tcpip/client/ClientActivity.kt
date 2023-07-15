@@ -29,6 +29,7 @@ import androidx.core.net.toUri
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.kaltok.tcpip.client.ui.ClientScreen
 import com.kaltok.tcpip.client.ui.theme.ServerTheme
 import com.kaltok.tcpip.client.ui.viewmodel.ClientViewModel
 import kotlinx.coroutines.launch
@@ -143,52 +144,5 @@ class ClientActivity : ComponentActivity() {
         return (this.flags and Intent.FLAG_ACTIVITY_LAUNCHED_FROM_HISTORY == Intent.FLAG_ACTIVITY_LAUNCHED_FROM_HISTORY).also {
             Log.d(tag, "isLaunchFromHistory: $it")
         }
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun ClientScreen(viewModel: ClientViewModel = viewModel()) {
-    val context = LocalContext.current
-    val uiState by viewModel.uiState.collectAsState()
-
-    MaterialTheme {
-        Column(Modifier.fillMaxSize()) {
-            Row(Modifier.fillMaxWidth()) {
-                Text(text = "type server ip")
-                Checkbox(
-                    checked = uiState.useLocalIp,
-                    onCheckedChange = { viewModel.setUseLocalIp(it) })
-            }
-            if (!uiState.useLocalIp) {
-                TextField(value = uiState.serverIp, onValueChange = { viewModel.setServerIp(it) })
-            }
-            Text(text = "Server Port")
-            TextField(value = uiState.serverPort, onValueChange = { viewModel.setServerPort(it) })
-            Button(
-                onClick = { viewModel.toggleClient() },
-                enabled = when (uiState.connectStatus) {
-                    ConnectStatus.CONNECTING, ConnectStatus.DISCONNECTING -> false
-                    else -> true
-                }
-            ) {
-                Text(
-                    text = when (uiState.connectStatus) {
-                        ConnectStatus.IDLE -> "START"
-                        ConnectStatus.CONNECTING -> "WAIT TRY CONNECTING"
-                        ConnectStatus.CONNECTED -> "STOP"
-                        ConnectStatus.DISCONNECTING -> "DISCONNECTING"
-                    }
-                )
-            }
-        }
-    }
-}
-
-@Preview(showBackground = true)
-@Composable
-fun GreetingPreview() {
-    ServerTheme {
-        ClientScreen()
     }
 }
