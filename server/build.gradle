@@ -50,6 +50,9 @@ android {
 }
 
 dependencies {
+    implementation project(':common')
+    implementation 'com.jakewharton.timber:timber:5.0.1'
+
     //custom tab
     implementation("androidx.browser:browser:1.5.0")
 

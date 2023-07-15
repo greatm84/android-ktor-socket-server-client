@@ -1,6 +1,5 @@
 package com.kaltok.tcpip.server.ui
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -39,6 +38,8 @@ import com.kaltok.tcpip.server.ui.viewmodel.ServerViewModel
 fun MainScreen(viewModel: ServerViewModel = viewModel()) {
     val context = LocalContext.current
     val uiState by viewModel.uiState.collectAsState()
+    val logList by viewModel.logList.collectAsState()
+    val serverStatus by viewModel.serverStatus.collectAsState()
     val listState = rememberLazyListState()
     var inputMessage by remember { mutableStateOf("") }
 
@@ -46,8 +47,8 @@ fun MainScreen(viewModel: ServerViewModel = viewModel()) {
         viewModel.refreshServerIpAddress(context)
     }
 
-    LaunchedEffect(uiState.logList.size) {
-        listState.animateScrollToItem(uiState.logList.size)
+    LaunchedEffect(logList.size) {
+        listState.animateScrollToItem(logList.size)
     }
 
     MaterialTheme {
@@ -65,14 +66,14 @@ fun MainScreen(viewModel: ServerViewModel = viewModel()) {
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
             )
             Button(
-                onClick = { viewModel.toggleServer() },
-                enabled = when (uiState.serverStatus) {
+                onClick = { viewModel.toggleServer(context) },
+                enabled = when (serverStatus) {
                     ServerStatus.IDLE, ServerStatus.CREATED -> true
                     else -> false
                 }
             ) {
                 Text(
-                    text = when (uiState.serverStatus) {
+                    text = when (serverStatus) {
                         ServerStatus.IDLE -> "CREATE"
                         ServerStatus.CREATING -> "WAIT"
                         ServerStatus.CREATED -> "STOP"
@@ -83,8 +84,8 @@ fun MainScreen(viewModel: ServerViewModel = viewModel()) {
 
             Text(text = "Logs")
             LazyColumn(state = listState, modifier = Modifier.weight(1f)) {
-                items(uiState.logList) {
-                    LogItem(it.first, it.second, it.third)
+                items(logList) {
+                    LogItem(it.first, it.second)
                 }
             }
 
@@ -108,7 +109,7 @@ fun MainScreen(viewModel: ServerViewModel = viewModel()) {
 }
 
 @Composable
-fun LogItem(id: String, log: String, color: Color) {
+fun LogItem(id: String, log: String) {
     Row(
         Modifier
             .fillMaxWidth()
@@ -118,7 +119,7 @@ fun LogItem(id: String, log: String, color: Color) {
             text = id,
             Modifier
                 .weight(0.1f)
-                .background(color)
+//                .background(color)
         )
         Text(text = log, Modifier.weight(0.9f))
     }
