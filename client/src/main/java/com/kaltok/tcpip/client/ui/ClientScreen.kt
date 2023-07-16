@@ -2,6 +2,7 @@ package com.kaltok.tcpip.client.ui
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -13,7 +14,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Button
-import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -38,6 +38,7 @@ import com.kaltok.tcpip.client.ui.viewmodel.ClientViewModel
 @Composable
 fun ClientScreen(viewModel: ClientViewModel = viewModel()) {
     val uiState by viewModel.uiState.collectAsState()
+    val searchedHosts by viewModel.serverHostIpList.collectAsState()
     var inputMessage by remember { mutableStateOf("") }
     val listState = rememberLazyListState()
     LaunchedEffect(uiState.logList.size) {
@@ -47,18 +48,32 @@ fun ClientScreen(viewModel: ClientViewModel = viewModel()) {
 
     MaterialTheme {
         Column(Modifier.fillMaxSize()) {
-            Row(Modifier.fillMaxWidth()) {
-                Text(text = "type server ip")
-                Checkbox(
-                    checked = uiState.useLocalIp,
-                    onCheckedChange = { viewModel.setUseLocalIp(it) })
+            Button(
+                onClick = { viewModel.searchServerHostIpList() },
+                enabled = !uiState.searchHostIp
+            ) {
+                Text(text = if (uiState.searchHostIp) "Searching" else "Search")
             }
-            if (!uiState.useLocalIp) {
-                TextField(
-                    value = uiState.serverIp, onValueChange = { viewModel.setServerIp(it) },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
-                )
+
+            LazyColumn(
+                Modifier
+                    .fillMaxWidth()
+                    .border(width = 1.dp, color = Color.Cyan)
+            ) {
+                items(searchedHosts) { hostIp ->
+                    Text(
+                        text = hostIp,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(1.dp)
+                            .clickable { viewModel.setServerIp(hostIp) })
+                }
             }
+            Spacer(Modifier.padding(1.dp))
+            TextField(
+                value = uiState.serverIp, onValueChange = { viewModel.setServerIp(it) },
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+            )
             Text(text = "Server Port")
             TextField(
                 value = uiState.serverPort,
