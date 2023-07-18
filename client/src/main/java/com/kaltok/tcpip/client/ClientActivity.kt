@@ -26,10 +26,13 @@ class ClientActivity : ComponentActivity() {
         private const val tag = "KSH_TEST"
     }
 
-    private val viewModel: ClientViewModel by viewModels { ViewModelProvider.AndroidViewModelFactory() }
+    private lateinit var viewModel: ClientViewModel
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        viewModel = ViewModelProvider(this)[ClientViewModel::class.java]
+
         setContent {
             ServerTheme {
                 // A surface container using the 'background' color from the theme
@@ -37,7 +40,7 @@ class ClientActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    ClientScreen()
+                    ClientScreen(viewModel)
                 }
             }
         }

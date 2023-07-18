@@ -30,27 +30,35 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.viewmodel.compose.viewModel
 import com.kaltok.tcpip.client.ConnectStatus
 import com.kaltok.tcpip.client.ui.viewmodel.ClientViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ClientScreen(viewModel: ClientViewModel = viewModel()) {
+fun ClientScreen(viewModel: ClientViewModel) {
     val uiState by viewModel.uiState.collectAsState()
-    val searchedHosts by viewModel.serverHostIpList.collectAsState()
+    val searchedHosts by viewModel.serverHostIpList.collectAsState(initial = emptyList())
     var inputMessage by remember { mutableStateOf("") }
     val listState = rememberLazyListState()
     LaunchedEffect(uiState.logList.size) {
         listState.animateScrollToItem(uiState.logList.size)
     }
 
+    LaunchedEffect(Unit) {
+        viewModel.loadLastServerIpFromPref()
+    }
+
 
     MaterialTheme {
         Column(Modifier.fillMaxSize()) {
             Button(
-                onClick = { viewModel.searchServerHostIpList() },
-                enabled = !uiState.searchHostIp
+                onClick = {
+                    if (uiState.searchHostIp) {
+                        viewModel.stopSearchServerHostIpList()
+                    } else {
+                        viewModel.searchServerHostIpList()
+                    }
+                },
             ) {
                 Text(text = if (uiState.searchHostIp) "Searching" else "Search")
             }

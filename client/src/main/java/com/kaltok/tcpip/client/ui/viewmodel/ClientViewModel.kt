@@ -1,8 +1,10 @@
 package com.kaltok.tcpip.client.ui.viewmodel
 
+import android.app.Application
+import android.content.Context
 import android.util.Log
 import androidx.compose.ui.graphics.Color
-import androidx.lifecycle.ViewModel
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.kaltok.tcpip.client.ConnectStatus
 import com.kaltok.tcpip.client.ui.ClientUiState
@@ -17,22 +19,28 @@ import io.ktor.websocket.send
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.channels.ClosedReceiveChannelException
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlin.random.Random
 
-class ClientViewModel : ViewModel() {
+class ClientViewModel(application: Application) : AndroidViewModel(application) {
 
     companion object {
+        private const val PREF_NAME = "client"
         private const val ID_LEN = 5
         private const val tag = "KSH_TEST"
     }
+
+    private val sharedPref = application.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE)
 
     private val _uiState = MutableStateFlow(ClientUiState())
     val uiState: StateFlow<ClientUiState> = _uiState.asStateFlow()
@@ -46,43 +54,53 @@ class ClientViewModel : ViewModel() {
 
     private var clientId = Random.nextLong(1, 99999).toString().padStart(ID_LEN, '0')
 
-    private val _serverHostIpList = MutableStateFlow(emptyList<String>())
-    val serverHostIpList = _serverHostIpList.asStateFlow()
+    private val _serverHostIpList = MutableSharedFlow<List<String>>()
+    val serverHostIpList = _serverHostIpList.asSharedFlow()
+
+    private var searchJob: Job? = null
+
+    fun stopSearchServerHostIpList() {
+        searchJob?.cancel()
+        setSearchHostIps(false)
+    }
 
     fun searchServerHostIpList() {
         setSearchHostIps(true)
-        viewModelScope.launch(Dispatchers.IO) {
-            val localIpAddress = "192.168.0." // Replace with your local IP address prefix
-            val startRange = 127 // Starting range for scanning
-            val endRange = 127 // Ending range for scanning
+        searchJob = viewModelScope.launch(Dispatchers.IO) {
+            val localIpAddress = "192.168." // Replace with your local IP address prefix
+            val startRange = 0 // Starting range for scanning
+            val endRange = 255 // Ending range for scanning
             val hostIpList = mutableListOf<String>()
 
             val jobs = mutableListOf<Deferred<Unit>>()
-            for (i in startRange..endRange) {
-                val ipAddress = localIpAddress + i
-                val job = async {
-                    val client = HttpClient {
-                        install(WebSockets)
-                    }
-                    try {
-                        client.webSocket(
-                            method = HttpMethod.Get,
-                            host = ipAddress,
-                            port = Define.DEFAULT_PORT,
-                            path = "/chat"
-                        ) {
-                            hostIpList.add(ipAddress)
-                            client.close()
+            for (j in startRange..endRange) {
+                for (i in startRange..endRange) {
+                    val ipAddress = "$localIpAddress$j.$i"
+                    val job = async {
+                        val client = HttpClient {
+                            install(WebSockets)
                         }
-                    } finally {
+                        try {
+                            client.webSocket(
+                                method = HttpMethod.Get,
+                                host = ipAddress,
+                                port = Define.DEFAULT_PORT,
+                                path = "/chat"
+                            ) {
+                                hostIpList.add(ipAddress)
+                                setSearchedServerHostIps(hostIpList)
+                                client.close()
+                            }
+                        } finally {
 
+                        }
                     }
+                    jobs.add(job)
                 }
-                jobs.add(job)
             }
 
             jobs.awaitAll()
-            _serverHostIpList.value = hostIpList
+            setSearchedServerHostIps(hostIpList)
             setSearchHostIps(false)
         }
     }
@@ -109,8 +127,16 @@ class ClientViewModel : ViewModel() {
         _uiState.value = _uiState.value.copy(searchHostIp = value)
     }
 
+    fun setSearchedServerHostIps(hostIpList: List<String>) {
+        Log.i(tag, "emit $hostIpList")
+        viewModelScope.launch(Dispatchers.Default) {
+            _serverHostIpList.emit(hostIpList)
+        }
+    }
+
     fun setServerIp(value: String) {
         _uiState.value = _uiState.value.copy(serverIp = value)
+        saveLastServerIpPref()
     }
 
     fun setServerPort(value: String) {
@@ -248,6 +274,17 @@ class ClientViewModel : ViewModel() {
             else -> {
                 // do nothing
             }
+        }
+    }
+
+    fun loadLastServerIpFromPref() {
+        setServerIp(sharedPref.getString("lastServerIp", "") ?: "")
+    }
+
+    fun saveLastServerIpPref() {
+        sharedPref.edit().apply {
+            putString("lastServerIp", _uiState.value.serverIp)
+            apply()
         }
     }
 }
