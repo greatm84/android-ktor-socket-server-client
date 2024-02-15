@@ -2,7 +2,6 @@ package com.kaltok.tcpip.server.repository
 
 import com.kaltok.tcpip.common.util.SingletonHolder
 import com.kaltok.tcpip.server.model.ServerStatus
-import io.ktor.websocket.Frame
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asSharedFlow
@@ -12,7 +11,7 @@ class ServerRepository private constructor() {
 
     companion object : SingletonHolder<ServerRepository>(::ServerRepository)
 
-    private val _sendMessagePool = MutableSharedFlow<Frame>()
+    private val _sendMessagePool = MutableSharedFlow<String>()
     val sendMessagePool = _sendMessagePool.asSharedFlow()
 
     private val _outputData = MutableStateFlow("")
@@ -26,11 +25,7 @@ class ServerRepository private constructor() {
 
 
     suspend fun sendMessageToClient(message: String) {
-        _sendMessagePool.emit(Frame.Text(message))
-    }
-
-    suspend fun sendCloseEventToClient() {
-        _sendMessagePool.emit(Frame.Close())
+        _sendMessagePool.emit(message)
     }
 
     fun setServerStatus(status: ServerStatus) {

@@ -3,7 +3,6 @@ package com.kaltok.tcpip.server.service
 import android.app.Service
 import android.content.Intent
 import android.os.IBinder
-import android.util.Log
 import com.kaltok.tcpip.common.constant.Define
 import com.kaltok.tcpip.common.constant.Define.ID_LEN
 import com.kaltok.tcpip.server.model.Connection
@@ -19,13 +18,12 @@ import io.ktor.server.websocket.pingPeriod
 import io.ktor.server.websocket.timeout
 import io.ktor.server.websocket.webSocket
 import io.ktor.websocket.Frame
-import io.ktor.websocket.close
 import io.ktor.websocket.readText
 import io.ktor.websocket.send
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import timber.log.Timber
@@ -36,6 +34,10 @@ class ServerService : Service() {
 
     private var server: ApplicationEngine? = null
     private val repository = ServerRepository.getInstance()
+    private val connections = Collections.synchronizedSet<Connection?>(LinkedHashSet())
+
+    private val serviceJob = Job()
+    private val serviceScope = CoroutineScope(Dispatchers.Main + serviceJob)
 
     override fun onBind(intent: Intent): IBinder? {
         return null
@@ -55,7 +57,16 @@ class ServerService : Service() {
     }
 
     private fun startServer(port: Int) {
-//        repository.initSendMessagePool()
+        serviceScope.launch {
+            repository.sendMessagePool.collect { message ->
+                Timber.i("server send $message")
+                repository.appendLogItem(message)
+                connections.forEach {
+                    it.session.send("00000:${message}")
+                }
+            }
+        }
+
         repository.setServerStatus(ServerStatus.CREATING)
         server = embeddedServer(Netty, port) {
             install(WebSockets) {
@@ -65,31 +76,6 @@ class ServerService : Service() {
                 masking = false
             }
             routing {
-                val connections = Collections.synchronizedSet<Connection?>(LinkedHashSet())
-
-                CoroutineScope(Dispatchers.IO).launch {
-                    repository.sendMessagePool.collect { frame ->
-//                        if (frame == null) {
-//                            return@collect
-//                        }
-
-                        Timber.i("server send $frame")
-
-                        if (frame is Frame.Text) {
-                            val sendText = frame.readText()
-                            repository.appendLogItem(sendText)
-                            connections.forEach {
-                                it.session.send("00000:${sendText}")
-                            }
-                        } else {
-                            repository.appendLogItem(frame.toString())
-                            connections.forEach {
-                                it.session.send(frame)
-                            }
-                        }
-                    }
-                }
-
                 webSocket("/chat") {
                     Timber.i("server client added")
                     repository.appendLogItem("server client added")
@@ -103,36 +89,22 @@ class ServerService : Service() {
                         send(welcomeMessage)
                         repository.appendLogItem("server send $welcomeMessage")
 
-                        while (repository.serverStatus.first() == ServerStatus.CREATED &&
-                            thisConnection.session.isActive
-                        ) {
-                            when (val frame = incoming.receive()) {
-                                is Frame.Text -> {
-                                    val receivedText = frame.readText()
+                        for (frame in incoming) {
+                            frame as? Frame.Text ?: continue
+                            val receivedText = frame.readText()
+                            Timber.i("server received $receivedText")
+                            repository.appendLogItem("server received :$receivedText")
 
-                                    Timber.i("server received $receivedText")
-                                    repository.appendLogItem("server received :$receivedText")
+                            if (receivedText.length > ID_LEN && receivedText[ID_LEN] == ':') {
+                                val id = receivedText.substring(0, ID_LEN)
+                                val remain =
+                                    receivedText.substring(ID_LEN + 1)
+                                Timber.i("server receive client message : $remain")
+                                repository.appendLogItem(remain, id)
+                            }
 
-                                    if (receivedText.length > ID_LEN && receivedText[ID_LEN] == ':') {
-                                        val id = receivedText.substring(0, ID_LEN)
-                                        val remain =
-                                            receivedText.substring(ID_LEN + 1)
-                                        Timber.i("server receive client message : $remain")
-                                        repository.appendLogItem(remain, id)
-                                        repository.sendOutputData(remain)
-                                    }
-
-                                    connections.forEach {
-                                        it.session.send(receivedText)
-                                    }
-                                }
-
-                                is Frame.Close -> {
-                                    repository.appendLogItem("server received close from:${thisConnection.name}")
-                                    throw Exception("close received")
-                                }
-
-                                else -> {}
+                            connections.forEach {
+                                it.session.send(receivedText)
                             }
                         }
                     } catch (e: Exception) {
@@ -140,9 +112,6 @@ class ServerService : Service() {
                     } finally {
                         Timber.i("Removing " + thisConnection.name + "!")
                         repository.appendLogItem("Removing ${thisConnection.name}!")
-                        if (thisConnection.session.isActive) {
-                            thisConnection.session.close()
-                        }
                         connections -= thisConnection
                         repository.sendMessageToClient("exits ${thisConnection.name}")
                     }
@@ -159,11 +128,15 @@ class ServerService : Service() {
 
     private fun stopServer() {
         repository.setServerStatus(ServerStatus.STOPPING)
-        CoroutineScope(Dispatchers.IO).launch {
-            repository.sendCloseEventToClient()
+        serviceScope.launch {
+            connections.forEach {
+                it.session.send(Frame.Close())
+            }
             server?.stop(500, 500)
             delay(500)
             repository.setServerStatus(ServerStatus.IDLE)
+
+            serviceJob.cancel()
         }
     }
 }
