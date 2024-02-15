@@ -14,6 +14,7 @@ import com.kaltok.tcpip.server.ui.ServerUiState
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 class ServerViewModel : ViewModel() {
@@ -38,8 +39,10 @@ class ServerViewModel : ViewModel() {
         if (isServiceRunning(context, ServerService::class.java)) {
             context.stopService(intent)
         } else {
+            val port = uiState.value.serverPort.toIntOrNull() ?: Define.DEFAULT_PORT
+            _uiState.update { it.copy(serverPort = port.toString()) }
             intent.apply {
-                putExtra("port", _uiState.value.serverPort.toIntOrNull() ?: Define.DEFAULT_PORT)
+                putExtra("port", port)
             }
             context.startService(intent)
         }

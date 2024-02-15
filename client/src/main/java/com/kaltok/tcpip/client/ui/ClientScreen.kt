@@ -28,6 +28,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.kaltok.tcpip.client.ConnectStatus
@@ -36,6 +37,7 @@ import com.kaltok.tcpip.client.ui.viewmodel.ClientViewModel
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ClientScreen(viewModel: ClientViewModel) {
+    val context = LocalContext.current
     val uiState by viewModel.uiState.collectAsState()
     val searchedHosts by viewModel.serverHostIpList.collectAsState(initial = emptyList())
     var inputMessage by remember { mutableStateOf("") }
@@ -89,7 +91,7 @@ fun ClientScreen(viewModel: ClientViewModel) {
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
             )
             Button(
-                onClick = { viewModel.toggleClient() },
+                onClick = { viewModel.toggleClient(context) },
                 enabled = when (uiState.connectStatus) {
                     ConnectStatus.CONNECTING, ConnectStatus.DISCONNECTING -> false
                     else -> true
@@ -119,7 +121,7 @@ fun ClientScreen(viewModel: ClientViewModel) {
                     inputMessage = it
                 }, modifier = Modifier.weight(1f))
                 Button(onClick = {
-                    viewModel.sendMessageToServer(inputMessage)
+                    viewModel.sendMessage(inputMessage)
                     inputMessage = ""
                 }) {
                     Text("Send")

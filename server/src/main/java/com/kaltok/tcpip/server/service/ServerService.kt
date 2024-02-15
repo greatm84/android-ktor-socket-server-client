@@ -76,6 +76,14 @@ class ServerService : Service() {
                 masking = false
             }
             routing {
+                webSocket("/open") {
+                    runCatching {
+                        for (frame in incoming) {
+
+                        }
+                    }
+                }
+
                 webSocket("/chat") {
                     Timber.i("server client added")
                     repository.appendLogItem("server client added")

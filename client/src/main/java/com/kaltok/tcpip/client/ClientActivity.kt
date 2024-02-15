@@ -7,7 +7,6 @@ import android.provider.Settings
 import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.activity.viewModels
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -112,7 +111,7 @@ class ClientActivity : ComponentActivity() {
         }
 
         Log.i(tag, "client append Send Intent $newIntent")
-        viewModel.sendMessageToServer(getUriStringFromIntent(newIntent))
+        viewModel.sendMessage(getUriStringFromIntent(newIntent))
     }
 
     private fun isFromWebUrl(newIntent: Intent?): Boolean {
